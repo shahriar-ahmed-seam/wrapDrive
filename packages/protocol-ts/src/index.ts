@@ -11,3 +11,4 @@ export * from './constants.js';
 export * from './models.js';
 export * from './validation.js';
 export * from './serialization.js';
+export * from './negotiation.js';

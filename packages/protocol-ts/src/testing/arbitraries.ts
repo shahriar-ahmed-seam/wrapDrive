@@ -69,6 +69,34 @@ export const arbCapabilities: fc.Arbitrary<Capabilities> = fc.record({
   chunkProtocolVersions: fc.array(fc.string(), { maxLength: 4 }),
 });
 
+/**
+ * Arbitrary {@link Capabilities} that always satisfies its own validation
+ * rules: `0 < minChunkSize <= maxChunkSize` and `maxParallelConnections >= 1`.
+ * Useful for negotiation tests, which assume valid inputs.
+ */
+export const arbValidCapabilities: fc.Arbitrary<Capabilities> = fc
+  .record({
+    parallelChunkedSend: fc.boolean(),
+    parallelChunkedReceive: fc.boolean(),
+    maxParallelConnections: fc.integer({ min: 1, max: 16 }),
+    minChunkSize: fc.integer({ min: 1, max: 8 * 1024 * 1024 }),
+    chunkSpan: fc.integer({ min: 0, max: 64 * 1024 * 1024 }),
+    // Draw from a small pool so overlaps occur with reasonable frequency.
+    chunkProtocolVersions: fc.subarray(['wd-chunk/1', 'wd-chunk/2', 'wd-chunk/3'], {
+      minLength: 0,
+      maxLength: 3,
+    }),
+  })
+  .map((r) => ({
+    appProtocol: APP_PROTOCOL,
+    parallelChunkedSend: r.parallelChunkedSend,
+    parallelChunkedReceive: r.parallelChunkedReceive,
+    maxParallelConnections: r.maxParallelConnections,
+    minChunkSize: r.minChunkSize,
+    maxChunkSize: r.minChunkSize + r.chunkSpan,
+    chunkProtocolVersions: r.chunkProtocolVersions,
+  }));
+
 /** Arbitrary {@link TransferPlan}. */
 export const arbTransferPlan: fc.Arbitrary<TransferPlan> = fc.record({
   mode: transferMode,
