@@ -1,0 +1,8 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/protocol-ts" },
+    { "path": "./packages/transfer-engine-ts" },
+    { "path": "./packages/design-system" }
+  ]
+}

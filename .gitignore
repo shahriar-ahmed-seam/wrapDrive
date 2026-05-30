@@ -1,0 +1,53 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+out/
+*.tsbuildinfo
+coverage/
+
+# Electron / packaging artifacts
+apps/desktop/release/
+apps/desktop/dist-electron/
+
+# Web build
+apps/web/dist/
+
+# Android build outputs
+apps/android/.gradle/
+apps/android/build/
+apps/android/**/build/
+apps/android/local.properties
+apps/android/.cxx/
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# Secrets and credentials
+.env
+.env.*
+*.pem
+*.key
+secrets/
+keystore.properties
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json
+
+# Spec & planning tooling (kept local, not published)
+.kiro/
