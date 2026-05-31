@@ -53,6 +53,15 @@ fun WrapDriveApp(
                 state.consent?.let { consent ->
                     ConsentDialog(consent, onConsentResult)
                 }
+
+                state.error?.let { error ->
+                    Text(
+                        text = error,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
+                    )
+                }
             }
         }
     }

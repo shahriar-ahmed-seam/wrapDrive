@@ -39,6 +39,7 @@ class MainActivity : ComponentActivity() {
                 val peers by container.uiPeers.collectAsState()
                 val consent by container.uiConsent.collectAsState()
                 val transfer by container.uiTransfer.collectAsState()
+                val error by container.uiError.collectAsState()
 
                 WrapDriveApp(
                     state =
@@ -47,8 +48,14 @@ class MainActivity : ComponentActivity() {
                             peers = peers,
                             consent = consent,
                             transfer = transfer,
+                            error = error,
                         ),
-                    onPeerTap = { peer -> lifecycleScope.launch { container.sendDemoFile(peer) } },
+                    onPeerTap = { peer ->
+                        lifecycleScope.launch {
+                            runCatching { container.sendDemoFile(peer) }
+                                .onFailure { Log.e("WrapDrive", "send failed", it) }
+                        }
+                    },
                     onConsentResult = { accepted -> container.resolveConsent(accepted) },
                 )
             }

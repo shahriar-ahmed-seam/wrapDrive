@@ -20,6 +20,8 @@ import io.ktor.client.engine.cio.CIO
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
 import java.io.File
 import java.security.MessageDigest
 import kotlinx.coroutines.CompletableDeferred
@@ -75,6 +77,7 @@ class AppContainer private constructor(
     val uiPeers: MutableStateFlow<List<Peer>> = MutableStateFlow(emptyList())
     val uiConsent: MutableStateFlow<ConsentUi?> = MutableStateFlow(null)
     val uiTransfer: MutableStateFlow<TransferUi?> = MutableStateFlow(null)
+    val uiError: MutableStateFlow<String?> = MutableStateFlow(null)
 
     private val discovery =
         DiscoveryService(
@@ -155,6 +158,16 @@ class AppContainer private constructor(
 
     /** Send a real file to a peer, negotiating the plan and driving progress. */
     suspend fun sendFile(peer: Peer, file: File) {
+        try {
+            sendFileInternal(peer, file)
+        } catch (t: Throwable) {
+            android.util.Log.e("WrapDrive", "send failed", t)
+            uiError.value = "Send failed: ${t.message ?: t.javaClass.simpleName}"
+            uiTransfer.value = null
+        }
+    }
+
+    private suspend fun sendFileInternal(peer: Peer, file: File) {
         val baseUrl = "http://${peer.address}:${peer.info.port}"
         val sha = sha256(file)
         val meta =
@@ -176,36 +189,70 @@ class AppContainer private constructor(
                 pin = null,
             )
 
-        val resultJson =
-            client
-                .post("$baseUrl${WrapDriveProtocol.API_NAMESPACE}/prepare-upload") {
-                    setBody(ProtocolJson.serialize(request))
-                }
-                .bodyAsText()
-        val result = ProtocolJson.parsePrepareUploadResult(resultJson)
-        val token = result.files.getValue(meta.id)
-        val accepted = result.acceptedPlan
+        uiTransfer.value = TransferUi(file.name, 0f, 0, "waiting for the other device…")
 
-        uiTransfer.value = TransferUi(file.name, 0f, 0, "transferring")
-
-        if (accepted.mode == TransferMode.`parallel-chunked`) {
-            val transport = HttpSenderTransport(baseUrl)
-            val sender = ParallelSender(transport)
-            val progress =
-                ChunkProgress { completed, total, bytes ->
-                    val fraction = completed.toFloat() / total
-                    uiTransfer.value = TransferUi(file.name, fraction, bytes, "transferring")
+        val response =
+            client.post("$baseUrl${WrapDriveProtocol.API_NAMESPACE}/prepare-upload") {
+                contentType(ContentType.Application.Json)
+                setBody(ProtocolJson.serialize(request))
+            }
+        if (response.status.value != 200) {
+            val reason =
+                when (response.status.value) {
+                    403 -> "declined by the other device"
+                    401 -> "PIN required"
+                    409 -> "the other device is busy"
+                    else -> "rejected (${response.status.value})"
                 }
-            sender.send(
-                UploadTarget(result.sessionId, meta.id, token),
-                FileSystemLocalFile(file),
-                accepted,
-                progress,
-            )
-            transport.close()
+            uiError.value = "Transfer $reason"
+            uiTransfer.value = null
+            return
         }
 
+        val result = ProtocolJson.parsePrepareUploadResult(response.bodyAsText())
+        val token = result.files[meta.id]
+        if (token == null) {
+            uiError.value = "Transfer failed: no token issued"
+            uiTransfer.value = null
+            return
+        }
+        val accepted = result.acceptedPlan
+        val target = UploadTarget(result.sessionId, meta.id, token)
+        val transport = HttpSenderTransport(baseUrl)
+
+        try {
+            uiTransfer.value = TransferUi(file.name, 0f, 0, "transferring")
+            if (accepted.mode == TransferMode.`parallel-chunked`) {
+                val sender = ParallelSender(transport)
+                sender.send(
+                    target,
+                    FileSystemLocalFile(file),
+                    accepted,
+                    ChunkProgress { completed, total, bytes ->
+                        uiTransfer.value =
+                            TransferUi(file.name, completed.toFloat() / total, bytes, "transferring")
+                    },
+                )
+            } else {
+                // Single-stream fallback: one full-file POST to /upload.
+                sendSingleStream(baseUrl, target, file)
+            }
+            uiTransfer.value = TransferUi(file.name, 1f, 0, "done")
+        } finally {
+            transport.close()
+        }
         uiTransfer.value = null
+    }
+
+    /** Single-stream upload: one full-file body to /upload. */
+    private suspend fun sendSingleStream(baseUrl: String, target: UploadTarget, file: File) {
+        client.post(
+            "$baseUrl${WrapDriveProtocol.API_NAMESPACE}/upload" +
+                "?sessionId=${target.sessionId}&fileId=${target.fileId}&token=${target.token}",
+        ) {
+            contentType(ContentType.Application.OctetStream)
+            setBody(file.readBytes())
+        }
     }
 
     private suspend fun registerWith(address: String) {

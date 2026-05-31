@@ -79,11 +79,36 @@ class ReceiveServer(
                     }
 
                     post("$ns/prepare-upload") {
-                        handlePrepareUpload()
+                        try {
+                            handlePrepareUpload()
+                        } catch (t: Throwable) {
+                            android.util.Log.e("WrapDrive", "prepare-upload failed", t)
+                            runCatching {
+                                call.respondText("error", status = HttpStatusCode.InternalServerError)
+                            }
+                        }
+                    }
+
+                    post("$ns/upload") {
+                        try {
+                            handleUpload()
+                        } catch (t: Throwable) {
+                            android.util.Log.e("WrapDrive", "upload failed", t)
+                            runCatching {
+                                call.respondText("error", status = HttpStatusCode.InternalServerError)
+                            }
+                        }
                     }
 
                     post("$ns/upload-chunk") {
-                        handleUploadChunk()
+                        try {
+                            handleUploadChunk()
+                        } catch (t: Throwable) {
+                            android.util.Log.e("WrapDrive", "upload-chunk failed", t)
+                            runCatching {
+                                call.respondText("error", status = HttpStatusCode.InternalServerError)
+                            }
+                        }
                     }
 
                     post("$ns/cancel") {
@@ -205,6 +230,36 @@ class ReceiveServer(
                 }
                 .getOrElse {
                     call.respondText("bad chunk", status = HttpStatusCode.BadRequest)
+                    return
+                }
+        if (outcome is com.wrapdrive.core.transfer.ReceiveOutcome.Done) {
+            onFileDone(outcome.name)
+        }
+        call.respondText("ok", status = HttpStatusCode.OK)
+    }
+
+    private suspend fun io.ktor.util.pipeline.PipelineContext<Unit, io.ktor.server.application.ApplicationCall>.handleUpload() {
+        val q = call.request.queryParameters
+        val ip = call.request.origin.remoteHost
+        val sessionId = q["sessionId"] ?: return badRequest()
+        val fileId = q["fileId"] ?: return badRequest()
+        val token = q["token"] ?: return badRequest()
+
+        val file =
+            sessions.authorize(sessionId, fileId, token, ip)
+                ?: run {
+                    call.respondText("forbidden", status = HttpStatusCode.Forbidden)
+                    return
+                }
+
+        // Single-stream: the whole body is one positional write at offset 0.
+        val data = call.receiveChannel().toInputStream().readBytes()
+        val outcome =
+            runCatching {
+                    file.receiver.receiveChunk(IncomingChunk(0, 0, data.size, data))
+                }
+                .getOrElse {
+                    call.respondText("bad upload", status = HttpStatusCode.BadRequest)
                     return
                 }
         if (outcome is com.wrapdrive.core.transfer.ReceiveOutcome.Done) {

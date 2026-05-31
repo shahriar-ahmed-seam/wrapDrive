@@ -24,6 +24,7 @@ data class WrapDriveUiState(
     val consent: ConsentUi? = null,
     val transfer: TransferUi? = null,
     val lastCompleted: String? = null,
+    val error: String? = null,
 )
 
 /**

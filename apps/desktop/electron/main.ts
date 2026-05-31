@@ -38,6 +38,14 @@ mkdirSync(downloadDir, { recursive: true });
 /** Pending consent prompts awaiting a renderer decision. */
 const pendingConsents = new Map<string, (decision: ConsentDecision) => void>();
 
+// Never let an unexpected error tear down the whole app; log and continue.
+process.on('uncaughtException', (err) => {
+  console.error('[wrapdrive] uncaught exception:', err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[wrapdrive] unhandled rejection:', reason);
+});
+
 function createWindow(): void {
   mainWindow = new BrowserWindow({
     width: 1100,
@@ -134,7 +142,18 @@ function registerIpc(): void {
     const target = latestPeers.find((p) => p.info.fingerprint === fingerprint);
     if (!target || !peer) return;
     for (const path of paths) {
-      await peer.sendFile(target, path);
+      try {
+        await peer.sendFile(target, path);
+      } catch (err) {
+        // Never let a send failure crash the main process; report to the UI.
+        mainWindow?.webContents.send(IpcChannels.transfer, {
+          fileName: path,
+          fraction: 0,
+          bytesPerSecond: 0,
+          state: `failed: ${(err as Error).message ?? 'error'}`,
+        });
+        setTimeout(() => mainWindow?.webContents.send(IpcChannels.transfer, null), 2500);
+      }
     }
   });
 
