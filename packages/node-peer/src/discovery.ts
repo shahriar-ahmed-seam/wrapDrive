@@ -18,6 +18,7 @@ import {
   type Capabilities,
   type DeviceInfo,
 } from '@wrapdrive/protocol';
+import { pickLanAddress } from './net-interface.js';
 
 /** A discovered peer with its resolved address and last-seen time. */
 export interface NodePeer {
@@ -65,6 +66,7 @@ export class Discovery {
   start(): void {
     const socket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
     this.socket = socket;
+    const lan = pickLanAddress();
 
     socket.on('message', (msg, rinfo) => {
       try {
@@ -77,12 +79,27 @@ export class Discovery {
       }
     });
 
+    socket.on('error', (err) => {
+      // eslint-disable-next-line no-console
+      console.warn(`[wrapdrive] discovery socket error: ${err.message}`);
+    });
+
+    // Bind on all interfaces so we receive from any, but pin multicast
+    // membership and outgoing multicast to the real LAN interface — critical on
+    // machines with Hyper-V/VPN virtual adapters.
     socket.bind(DEFAULT_PORT, () => {
       try {
-        socket.addMembership(MULTICAST_GROUP);
-        socket.setMulticastTTL(2);
-      } catch {
-        // Membership can fail on some interfaces; HTTP register still works.
+        if (lan) {
+          socket.addMembership(MULTICAST_GROUP, lan.address);
+          socket.setMulticastInterface(lan.address);
+        } else {
+          socket.addMembership(MULTICAST_GROUP);
+        }
+        socket.setMulticastTTL(4);
+        socket.setMulticastLoopback(true);
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn(`[wrapdrive] multicast setup failed: ${String(err)}`);
       }
       this.announce();
       this.announceTimer = setInterval(() => this.announce(), ANNOUNCE_INTERVAL_MS);

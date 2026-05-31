@@ -10,6 +10,8 @@ import { basename } from 'node:path';
 import {
   API_NAMESPACE,
   negotiate,
+  parseCapabilities,
+  parseDeviceInfo,
   parsePrepareUploadResult,
   serializePrepareUploadRequest,
   type Capabilities,
@@ -17,14 +19,11 @@ import {
   type FileMeta,
   type PrepareUploadRequest,
 } from '@wrapdrive/protocol';
-import {
-  sendParallel,
-  sendSingleStream,
-  type LocalFile,
-} from '@wrapdrive/transfer-engine';
+import { sendParallel, sendSingleStream, type LocalFile } from '@wrapdrive/transfer-engine';
 import { NodeFileAdapter } from '@wrapdrive/transfer-engine/node';
 import { Discovery, encodeAnnouncement, type NodePeer } from './discovery.js';
 import { HttpSenderTransport } from './http-sender-transport.js';
+import { pickLanAddress } from './net-interface.js';
 import { ReceiveServer, type ConsentDecision, type ConsentRequest } from './receive-server.js';
 
 /** Callbacks the host app provides to the peer. */
@@ -49,6 +48,7 @@ export class Peer {
   private readonly adapter = new NodeFileAdapter();
   private readonly discovery: Discovery;
   private readonly server: ReceiveServer;
+  private scanTimer: NodeJS.Timeout | null = null;
 
   constructor(
     private readonly self: DeviceInfo,
@@ -81,11 +81,60 @@ export class Peer {
     await this.server.listen(this.self.port);
     this.discovery.start();
     if (this.hooks.onPeers) this.discovery.onPeersChanged(this.hooks.onPeers);
+    // Multicast is unreliable across some home routers (AP isolation) and
+    // phone<->PC; actively scan the local /24 over HTTP as a robust fallback.
+    void this.scanSubnet();
+    this.scanTimer = setInterval(() => void this.scanSubnet(), 15_000);
   }
 
   async stop(): Promise<void> {
+    if (this.scanTimer) clearInterval(this.scanTimer);
     this.discovery.stop();
     await this.server.close();
+  }
+
+  /** The detected LAN address other devices should use to reach this peer. */
+  lanAddress(): string | null {
+    return pickLanAddress()?.address ?? null;
+  }
+
+  /**
+   * Probe every host on the local /24 for a WrapDrive server and register with
+   * any that answer. This is the reliable discovery path when multicast is
+   * blocked. Cheap: short timeouts, runs in parallel, skips our own address.
+   */
+  private async scanSubnet(): Promise<void> {
+    const lan = pickLanAddress();
+    if (!lan) return;
+    const base = lan.address.replace(/\.\d+$/, '');
+    const probes: Array<Promise<void>> = [];
+    for (let host = 1; host <= 254; host++) {
+      const address = `${base}.${host}`;
+      if (address === lan.address) continue;
+      probes.push(this.probe(address));
+    }
+    await Promise.allSettled(probes);
+  }
+
+  private async probe(address: string): Promise<void> {
+    const url = `http://${address}:${this.self.port}${API_NAMESPACE}/register`;
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: encodeAnnouncement(this.self, this.capabilities),
+        signal: AbortSignal.timeout(700),
+      });
+      if (!res.ok) return;
+      const obj = JSON.parse(await res.text());
+      const info = parseDeviceInfo(JSON.stringify(obj));
+      const caps = parseCapabilities(JSON.stringify(obj.capabilities));
+      if (info.fingerprint !== this.self.fingerprint) {
+        this.discovery.recordPeer(info, caps, address);
+      }
+    } catch {
+      // No peer at this address; ignore.
+    }
   }
 
   getPeers(): NodePeer[] {
