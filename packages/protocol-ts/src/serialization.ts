@@ -91,7 +91,9 @@ function canonicalChunkRef(chunk: ChunkRef): Json {
 
 /** Build a key-sorted canonical object from a record of canonical values. */
 function canonicalRecord<T>(record: Record<string, T>, map: (value: T) => Json): Json {
-  const out: { [key: string]: Json } = {};
+  // Use a null-prototype object so reserved keys such as `__proto__` become
+  // ordinary own properties instead of mutating the prototype chain.
+  const out: { [key: string]: Json } = Object.create(null) as { [key: string]: Json };
   for (const key of Object.keys(record).sort()) {
     out[key] = map(record[key] as T);
   }
@@ -287,7 +289,8 @@ function readRecord<T>(
   read: (item: unknown) => T,
 ): Record<string, T> {
   const o = asObject(value, context);
-  const out: Record<string, T> = {};
+  // Null-prototype result so keys like `__proto__` round-trip as own keys.
+  const out: Record<string, T> = Object.create(null) as Record<string, T>;
   for (const key of Object.keys(o)) {
     out[key] = read(o[key]);
   }
