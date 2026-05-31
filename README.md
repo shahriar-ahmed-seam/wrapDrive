@@ -37,12 +37,55 @@ Requirements: Node.js >= 20 and pnpm >= 9.
 
 ```bash
 pnpm install
+pnpm build
 pnpm test
 ```
 
-Per-platform build and run instructions live in `docs/` and in each app's
-README. The platforms are developed and verified in order: Android, then
-Desktop, then Web.
+This builds and tests the shared TypeScript packages (protocol, transfer engine,
+design tokens) and runs the property-based and interop test suites.
+
+### Run the desktop app
+
+```bash
+pnpm --filter @wrapdrive/desktop dev
+```
+
+### Run the web app
+
+```bash
+pnpm --filter @wrapdrive/web dev
+```
+
+To run two web instances side by side (for local testing):
+
+```bash
+WD_WEB_PORT=5173 pnpm --filter @wrapdrive/web dev
+WD_WEB_PORT=5174 pnpm --filter @wrapdrive/web dev
+```
+
+### Web-host companion (optional, for full parity)
+
+A browser tab cannot host a server, so on its own the web app can send files
+(in parallel when the receiver supports it) but cannot receive chunked
+transfers. Running the small Node companion gives the web app full parity —
+device discovery and chunked receive — by hosting a WrapDrive peer locally that
+the browser talks to over `localhost`:
+
+```bash
+pnpm --filter @wrapdrive/web-host build
+pnpm --filter @wrapdrive/web-host start
+```
+
+Received files are saved to `~/Downloads/WrapDrive`.
+
+### Build the Android app
+
+```bash
+cd apps/android
+./gradlew assembleDebug
+```
+
+The APK is written to `apps/android/app/build/outputs/apk/debug/`.
 
 ## Security posture (v1)
 
@@ -54,9 +97,14 @@ default posture:
   is planned for a later version).
 - Every incoming transfer requires explicit consent on the receiving device,
   and an optional PIN can be required before a transfer is accepted.
+- Each session issues per-file opaque tokens and pins the sender's IP; only one
+  transfer session is active at a time.
+- Received files are verified against a whole-file SHA-256 before they are
+  committed, and file names are sanitized to prevent path traversal.
 
-The web-host companion documentation and detailed posture notes are in
-[`docs/`](docs/).
+The HTTP server binds to the LAN interface on port 53317 and is intentionally
+reachable by same-network devices; it is gated by consent and an optional PIN
+rather than network-level authentication.
 
 ## Protocol
 
