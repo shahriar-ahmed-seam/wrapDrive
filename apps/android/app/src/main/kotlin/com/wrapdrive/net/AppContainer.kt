@@ -93,8 +93,14 @@ class AppContainer(
 
     fun start() {
         vm.setSelfAlias(self.alias)
-        server.start()
-        discovery.start()
+        // All network setup runs off the main thread; a failure must never crash
+        // the app — discovery/serving degrade gracefully instead.
+        scope.launch(Dispatchers.IO) {
+            runCatching { server.start() }
+                .onFailure { android.util.Log.e("WrapDrive", "server start failed", it) }
+            runCatching { discovery.start() }
+                .onFailure { android.util.Log.e("WrapDrive", "discovery start failed", it) }
+        }
         scope.launch(Dispatchers.Main) {
             discovery.peers.collect { vm.setPeers(it) }
         }

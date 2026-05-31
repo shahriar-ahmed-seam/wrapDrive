@@ -49,20 +49,31 @@ class DiscoveryService(
     private var socket: MulticastSocket? = null
     private val jobs = mutableListOf<Job>()
 
-    /** Begin announcing, listening, and pruning. */
+    /** Begin announcing, listening, and pruning. Never throws. */
     fun start() {
-        val group = InetAddress.getByName(WrapDriveProtocol.MULTICAST_GROUP)
-        val mcast = MulticastSocket(WrapDriveProtocol.DEFAULT_PORT)
-        mcast.reuseAddress = true
-        runCatching { mcast.joinGroup(group) }
+        val mcast =
+            try {
+                MulticastSocket(WrapDriveProtocol.DEFAULT_PORT).apply { reuseAddress = true }
+            } catch (e: Exception) {
+                android.util.Log.w("WrapDrive", "multicast socket unavailable: $e")
+                null
+            }
         socket = mcast
 
-        jobs +=
-            scope.launch(Dispatchers.IO) { announceLoop(group) }
-        jobs +=
-            scope.launch(Dispatchers.IO) { listenLoop() }
-        jobs +=
-            scope.launch(Dispatchers.Default) { pruneLoop() }
+        val group =
+            try {
+                InetAddress.getByName(WrapDriveProtocol.MULTICAST_GROUP)
+            } catch (e: Exception) {
+                android.util.Log.w("WrapDrive", "multicast group resolve failed: $e")
+                null
+            }
+        if (mcast != null && group != null) {
+            runCatching { mcast.joinGroup(group) }
+            jobs += scope.launch(Dispatchers.IO) { announceLoop(group) }
+            jobs += scope.launch(Dispatchers.IO) { listenLoop() }
+        }
+        // Pruning runs regardless so peers added via /register still expire.
+        jobs += scope.launch(Dispatchers.Default) { pruneLoop() }
     }
 
     /** Stop all loops and leave the multicast group. */
