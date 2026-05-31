@@ -18,11 +18,11 @@ import {
   type PrepareUploadRequest,
 } from '@wrapdrive/protocol';
 import {
-  NodeFileAdapter,
   sendParallel,
   sendSingleStream,
   type LocalFile,
 } from '@wrapdrive/transfer-engine';
+import { NodeFileAdapter } from '@wrapdrive/transfer-engine/node';
 import { Discovery, encodeAnnouncement, type NodePeer } from './discovery.js';
 import { HttpSenderTransport } from './http-sender-transport.js';
 import { ReceiveServer, type ConsentDecision, type ConsentRequest } from './receive-server.js';
@@ -65,6 +65,15 @@ export class Peer {
       resolveDestination: hooks.resolveDestination,
       getPin: hooks.getPin,
       onFileDone: hooks.onFileReceived,
+      listPeers: () =>
+        this.discovery.getPeers().map((p) => ({
+          fingerprint: p.info.fingerprint,
+          alias: p.info.alias,
+          address: p.address,
+          port: p.info.port,
+          capabilities: p.capabilities,
+          info: p.info,
+        })),
     });
   }
 

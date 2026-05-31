@@ -1,0 +1,19 @@
+{
+  "name": "@wrapdrive/web-host",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Optional Node companion that gives the WrapDrive web app full parity (discovery + chunked receive) by hosting a peer locally.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "wrapdrive-web-host": "./dist/server.js"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "start": "node dist/server.js"
+  },
+  "dependencies": {
+    "@wrapdrive/node-peer": "workspace:*",
+    "@wrapdrive/protocol": "workspace:*"
+  }
+}

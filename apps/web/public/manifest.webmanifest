@@ -1,0 +1,10 @@
+{
+  "name": "WrapDrive",
+  "short_name": "WrapDrive",
+  "description": "Local-network file sharing.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0E1117",
+  "theme_color": "#0E1117",
+  "icons": []
+}

@@ -11,9 +11,11 @@
 export * from './errors.js';
 export * from './chunk-planner.js';
 export * from './file-adapter.js';
-export * from './node-file-adapter.js';
 export * from './chunk-receiver.js';
 export * from './transport.js';
 export * from './retry.js';
 export * from './parallel-sender.js';
 export * from './single-stream.js';
+// Note: the Node file adapter is intentionally NOT re-exported here so that
+// browser bundles never pull in `node:fs`. Import it from
+// `@wrapdrive/transfer-engine/node` instead.

@@ -45,6 +45,8 @@ export interface ReceiveServerHooks {
   resolveDestination(fileName: string): string;
   getPin(): string | null;
   onFileDone?(finalPath: string): void;
+  /** Optional: expose the current peer list as JSON (used by the web bridge). */
+  listPeers?(): unknown;
 }
 
 interface FileState {
@@ -93,7 +95,13 @@ export class ReceiveServer {
   }
 
   private send(res: ServerResponse, status: number, body = ''): void {
-    res.writeHead(status, { 'content-type': 'application/json' });
+    res.writeHead(status, {
+      'content-type': 'application/json',
+      // Allow browser callers (the web app / web-host bridge); LAN-only posture.
+      'access-control-allow-origin': '*',
+      'access-control-allow-methods': 'GET, POST, OPTIONS',
+      'access-control-allow-headers': 'content-type',
+    });
     res.end(body);
   }
 
@@ -111,8 +119,14 @@ export class ReceiveServer {
     const url = new URL(req.url ?? '/', 'http://localhost');
     const path = url.pathname;
     try {
+      if (req.method === 'OPTIONS') {
+        return this.send(res, 204);
+      }
       if (path === `${API_NAMESPACE}/info` && req.method === 'GET') {
         return this.send(res, 200, serializeDeviceInfo(this.self));
+      }
+      if (path === `${API_NAMESPACE}/peers` && req.method === 'GET') {
+        return this.send(res, 200, JSON.stringify(this.hooks.listPeers?.() ?? []));
       }
       if (path === `${API_NAMESPACE}/register` && req.method === 'POST') {
         return await this.handleRegister(req, res);

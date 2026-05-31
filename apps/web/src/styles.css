@@ -1,0 +1,188 @@
+/*
+ * WrapDrive web styles. CSS variables mirror the shared design tokens so the
+ * web app matches Android and Desktop. Mobile-first responsive layout.
+ */
+:root {
+  --bg: #0e1117;
+  --surface: #161b22;
+  --surface-raised: #1c232d;
+  --surface-overlay: #232c38;
+  --border: #2a3340;
+  --text-primary: #e6edf3;
+  --text-secondary: #9da7b3;
+  --text-muted: #6b7682;
+  --primary: #5b8def;
+  --primary-hover: #4f7fe0;
+  --on-primary: #ffffff;
+  --accent: #6fe3c2;
+  --warning: #d29922;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-family: Inter, 'Segoe UI', Roboto, system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text-primary);
+}
+
+.app {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+}
+
+.brand {
+  font-size: 32px;
+  font-weight: 700;
+}
+
+.subtle {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.mode-banner {
+  margin: 16px 0;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.mode-banner.single-file {
+  border-color: var(--warning);
+}
+
+.peer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.peer-card {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.peer-card:hover {
+  border-color: var(--primary);
+}
+
+.peer-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-pill);
+  background: var(--primary);
+  color: var(--on-primary);
+  display: grid;
+  place-items: center;
+  font-weight: 600;
+}
+
+.alias {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.addr {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.empty {
+  margin-top: 48px;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.radar {
+  width: 180px;
+  height: 180px;
+  margin: 24px auto;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  position: relative;
+}
+
+.radar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  border-radius: 50%;
+  border: 2px solid var(--primary);
+  animation: pulse 2.4s ease-out infinite;
+}
+
+@keyframes pulse {
+  0% {
+    width: 0;
+    height: 0;
+    opacity: 0.6;
+  }
+  100% {
+    width: 180px;
+    height: 180px;
+    opacity: 0;
+  }
+}
+
+.ring {
+  --pct: 0;
+  width: 140px;
+  height: 140px;
+  margin: 32px auto;
+  border-radius: 50%;
+  background: conic-gradient(var(--primary) calc(var(--pct) * 1%), var(--surface-overlay) 0);
+  display: grid;
+  place-items: center;
+}
+
+.ring .inner {
+  width: 112px;
+  height: 112px;
+  border-radius: 50%;
+  background: var(--bg);
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+button.btn {
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 10px 18px;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+button.btn:hover {
+  background: var(--primary-hover);
+}
