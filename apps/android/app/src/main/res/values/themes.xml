@@ -1,4 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.WrapDrive" parent="android:Theme.Material.NoActionBar" />
+    <!--
+      A no-action-bar theme for the Compose host. We avoid AppCompat/Material XML
+      dependencies and instead use the framework Material theme with the action
+      bar and title disabled, plus a dark background that matches the design
+      tokens so there is no white flash before Compose draws.
+    -->
+    <style name="Theme.WrapDrive" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/wd_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+    </style>
 </resources>

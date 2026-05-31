@@ -23,6 +23,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Install the crash reporter before anything else so any startup failure
+        // is captured and shown on screen instead of a silent crash.
+        CrashReporter.install(this)
         enableEdgeToEdge()
 
         val vm = ViewModelProvider(this)[WrapDriveViewModel::class.java]
