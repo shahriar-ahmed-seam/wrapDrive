@@ -38,6 +38,7 @@ jobs:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm build
       - run: pnpm --filter @wrapdrive/web build
       - name: Package web bundle
         run: |
@@ -59,6 +60,7 @@ jobs:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm build
       - run: pnpm --filter @wrapdrive/desktop build
       - uses: actions/upload-artifact@v4
         with:
