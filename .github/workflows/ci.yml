@@ -73,7 +73,9 @@ jobs:
       - uses: android-actions/setup-android@v3
       - name: Build APK
         working-directory: apps/android
-        run: ./gradlew assembleDebug --no-daemon
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleDebug --no-daemon
       - name: Unit tests
         working-directory: apps/android
         run: ./gradlew testDebugUnitTest --no-daemon
