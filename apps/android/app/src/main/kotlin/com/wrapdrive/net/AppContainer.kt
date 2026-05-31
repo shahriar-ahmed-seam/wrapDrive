@@ -15,7 +15,6 @@ import com.wrapdrive.core.transfer.ParallelSender
 import com.wrapdrive.core.transfer.UploadTarget
 import com.wrapdrive.ui.ConsentUi
 import com.wrapdrive.ui.TransferUi
-import com.wrapdrive.ui.WrapDriveViewModel
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.request.post
@@ -26,21 +25,33 @@ import java.security.MessageDigest
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /**
  * Composition root for the Android networking + transfer stack.
  *
- * Wires the [DiscoveryService], the [ReceiveServer] (with consent/PIN gate and
- * session manager), and the sender path into the [WrapDriveViewModel]. Exposes
- * a demo send used by the UI's tap-to-send and the two-AVD interop test.
+ * This is a **process-level singleton** ([getInstance]) started exactly once via
+ * [start]. That matters because Android can recreate the Activity (config
+ * change, process restart); without the singleton each recreation would spin up
+ * a second [ReceiveServer] on the same port and fail with "Address already in
+ * use". The container owns its own state flows; the UI observes them.
  */
-class AppContainer(
+class AppContainer private constructor(
     context: Context,
-    private val vm: WrapDriveViewModel,
     private val scope: CoroutineScope,
 ) {
+    companion object {
+        @Volatile private var instance: AppContainer? = null
+
+        /** Get or create the single process-wide container. */
+        fun getInstance(context: Context, scope: CoroutineScope): AppContainer =
+            instance
+                ?: synchronized(this) {
+                    instance ?: AppContainer(context.applicationContext, scope).also { instance = it }
+                }
+    }
+
     private val filesDir: File = context.filesDir
     private val downloads = File(filesDir, "received").apply { mkdirs() }
     private val outbox = File(filesDir, "outbox").apply { mkdirs() }
@@ -53,8 +64,17 @@ class AppContainer(
     private val sessions = SessionManager(adapter)
     private val client = HttpClient(CIO)
 
+    @Volatile private var started = false
     @Volatile private var pin: String? = null
     @Volatile private var pendingConsent: CompletableDeferred<ConsentDecision>? = null
+
+    /** This device's display alias, exposed to the UI. */
+    val selfAlias: String get() = self.alias
+
+    /** Observable UI state owned by the container (survives Activity recreation). */
+    val uiPeers: MutableStateFlow<List<Peer>> = MutableStateFlow(emptyList())
+    val uiConsent: MutableStateFlow<ConsentUi?> = MutableStateFlow(null)
+    val uiTransfer: MutableStateFlow<TransferUi?> = MutableStateFlow(null)
 
     private val discovery =
         DiscoveryService(
@@ -71,11 +91,9 @@ class AppContainer(
                 pendingConsent = deferred
                 val summary =
                     consent.files.joinToString("\n") { "${it.fileName} (${humanSize(it.size)})" }
-                withContext(Dispatchers.Main) {
-                    vm.showConsent(ConsentUi(consent.from.alias, summary, consent.pinRequired))
-                }
+                uiConsent.value = ConsentUi(consent.from.alias, summary, consent.pinRequired)
                 val decision = deferred.await()
-                withContext(Dispatchers.Main) { vm.showConsent(null) }
+                uiConsent.value = null
                 return decision
             }
         }
@@ -88,28 +106,36 @@ class AppContainer(
             consentGate = consentGate,
             discovery = discovery,
             pinProvider = { pin },
-            onFileDone = { name -> scope.launch(Dispatchers.Main) { vm.markCompleted(name) } },
+            onFileDone = { name -> uiTransfer.value = null },
         )
 
+    /** Start networking once. Safe to call repeatedly; later calls are no-ops. */
+    @Synchronized
     fun start() {
-        vm.setSelfAlias(self.alias)
-        // All network setup runs off the main thread; a failure must never crash
-        // the app — discovery/serving degrade gracefully instead.
+        if (started) return
+        started = true
         scope.launch(Dispatchers.IO) {
-            runCatching { server.start() }
-                .onFailure { android.util.Log.e("WrapDrive", "server start failed", it) }
+            // Try the default port, then a small range, so a leftover bind never
+            // crashes startup.
+            var bound = false
+            for (candidate in WrapDriveProtocol.DEFAULT_PORT..(WrapDriveProtocol.DEFAULT_PORT + 5)) {
+                if (server.start(candidate)) {
+                    bound = true
+                    break
+                }
+            }
+            if (!bound) android.util.Log.e("WrapDrive", "could not bind receive server")
             runCatching { discovery.start() }
                 .onFailure { android.util.Log.e("WrapDrive", "discovery start failed", it) }
         }
-        scope.launch(Dispatchers.Main) {
-            discovery.peers.collect { vm.setPeers(it) }
-        }
+        scope.launch { discovery.peers.collect { uiPeers.value = it } }
     }
 
     suspend fun stop() {
         discovery.stop()
         server.stop()
         client.close()
+        started = false
     }
 
     /** Resolve a pending consent prompt from the UI. */
@@ -160,9 +186,7 @@ class AppContainer(
         val token = result.files.getValue(meta.id)
         val accepted = result.acceptedPlan
 
-        withContext(Dispatchers.Main) {
-            vm.updateTransfer(TransferUi(file.name, 0f, 0, "transferring"))
-        }
+        uiTransfer.value = TransferUi(file.name, 0f, 0, "transferring")
 
         if (accepted.mode == TransferMode.`parallel-chunked`) {
             val transport = HttpSenderTransport(baseUrl)
@@ -170,9 +194,7 @@ class AppContainer(
             val progress =
                 ChunkProgress { completed, total, bytes ->
                     val fraction = completed.toFloat() / total
-                    scope.launch(Dispatchers.Main) {
-                        vm.updateTransfer(TransferUi(file.name, fraction, bytes, "transferring"))
-                    }
+                    uiTransfer.value = TransferUi(file.name, fraction, bytes, "transferring")
                 }
             sender.send(
                 UploadTarget(result.sessionId, meta.id, token),
@@ -183,7 +205,7 @@ class AppContainer(
             transport.close()
         }
 
-        withContext(Dispatchers.Main) { vm.markCompleted(file.name) }
+        uiTransfer.value = null
     }
 
     private suspend fun registerWith(address: String) {

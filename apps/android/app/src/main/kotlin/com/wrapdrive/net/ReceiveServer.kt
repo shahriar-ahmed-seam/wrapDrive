@@ -44,11 +44,25 @@ class ReceiveServer(
     private var engine: ApplicationEngine? = null
     private val pinAttempts = HashMap<String, Int>()
 
-    fun start(port: Int = WrapDriveProtocol.DEFAULT_PORT) {
-        engine =
-            embeddedServer(CIO, port = port) {
-                routing {
-                    get("$ns/info") {
+    /**
+     * Start the receive server. Returns true if it bound successfully.
+     *
+     * The CIO engine binds on a background coroutine, so a late
+     * [java.net.BindException] would otherwise crash the process. We therefore
+     * pre-check that the port is free with a throwaway [java.net.ServerSocket]
+     * (synchronous, catchable) and only start Ktor when the bind will succeed.
+     */
+    fun start(port: Int = WrapDriveProtocol.DEFAULT_PORT): Boolean {
+        if (engine != null) return true // already running; never start twice
+        if (!isPortFree(port)) {
+            android.util.Log.w("WrapDrive", "port $port is in use")
+            return false
+        }
+        return try {
+            val created =
+                embeddedServer(CIO, port = port) {
+                    routing {
+                        get("$ns/info") {
                         call.respondText(ProtocolJson.serialize(self), status = HttpStatusCode.OK)
                     }
 
@@ -79,13 +93,31 @@ class ReceiveServer(
                     }
                 }
             }
-        engine?.start(wait = false)
+            created.start(wait = false)
+            engine = created
+            true
+        } catch (t: Throwable) {
+            android.util.Log.e("WrapDrive", "failed to start receive server on :$port", t)
+            false
+        }
     }
 
     fun stop() {
         engine?.stop(500, 1000)
         engine = null
     }
+
+    /** True if [port] can currently be bound (synchronous, catchable check). */
+    private fun isPortFree(port: Int): Boolean =
+        try {
+            java.net.ServerSocket().use { socket ->
+                socket.reuseAddress = false
+                socket.bind(java.net.InetSocketAddress(port))
+                true
+            }
+        } catch (_: Exception) {
+            false
+        }
 
     // --- Handlers (extension on the call's pipeline) -----------------------
 

@@ -7,51 +7,51 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.wrapdrive.net.AppContainer
 import com.wrapdrive.ui.WrapDriveApp
-import com.wrapdrive.ui.WrapDriveViewModel
+import com.wrapdrive.ui.WrapDriveUiState
 import kotlinx.coroutines.launch
 
 /**
- * Single-activity entry point. Builds the [AppContainer] (discovery, server,
- * sender) and binds it to the [WrapDriveViewModel] that drives the Compose UI.
+ * Single-activity entry point. Uses the process-wide [AppContainer] singleton
+ * (so Activity recreation never starts a second server) and renders the Compose
+ * UI from the container's own state flows.
  */
 class MainActivity : ComponentActivity() {
-    private var container: AppContainer? = null
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Install the crash reporter before anything else so any startup failure
-        // is captured and shown on screen instead of a silent crash.
+        // Capture any uncaught exception and show it on screen, before anything else.
         CrashReporter.install(this)
         enableEdgeToEdge()
 
-        val vm = ViewModelProvider(this)[WrapDriveViewModel::class.java]
-
-        // Build and start the networking container once, off the composition.
-        // Any failure is logged rather than crashing the UI.
-        try {
-            val c = AppContainer(applicationContext, vm, lifecycleScope)
-            c.start()
-            container = c
-        } catch (t: Throwable) {
-            Log.e("WrapDrive", "container init failed", t)
-        }
+        val container =
+            runCatching {
+                    AppContainer.getInstance(applicationContext, lifecycleScope).also { it.start() }
+                }
+                .onFailure { Log.e("WrapDrive", "container init failed", it) }
+                .getOrNull()
 
         setContent {
-            val state by vm.state.collectAsState()
-            WrapDriveApp(
-                state = state,
-                onPeerTap = { peer -> lifecycleScope.launch { container?.sendDemoFile(peer) } },
-                onConsentResult = { accepted -> container?.resolveConsent(accepted) },
-            )
-        }
-    }
+            if (container == null) {
+                WrapDriveApp(WrapDriveUiState(selfAlias = "WrapDrive"), {}, {})
+            } else {
+                val peers by container.uiPeers.collectAsState()
+                val consent by container.uiConsent.collectAsState()
+                val transfer by container.uiTransfer.collectAsState()
 
-    override fun onDestroy() {
-        super.onDestroy()
-        container?.let { c -> lifecycleScope.launch { c.stop() } }
+                WrapDriveApp(
+                    state =
+                        WrapDriveUiState(
+                            selfAlias = container.selfAlias,
+                            peers = peers,
+                            consent = consent,
+                            transfer = transfer,
+                        ),
+                    onPeerTap = { peer -> lifecycleScope.launch { container.sendDemoFile(peer) } },
+                    onConsentResult = { accepted -> container.resolveConsent(accepted) },
+                )
+            }
+        }
     }
 }
