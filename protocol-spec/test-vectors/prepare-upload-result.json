@@ -1,0 +1,18 @@
+{
+  "type": "PrepareUploadResult",
+  "description": "A prepare-upload result with per-file tokens.",
+  "message": {
+    "sessionId": "sess-7f3a",
+    "files": {
+      "file-2": "tok-bbb",
+      "file-1": "tok-aaa"
+    },
+    "acceptedPlan": {
+      "mode": "parallel-chunked",
+      "chunkSize": 4194304,
+      "parallelism": 6,
+      "chunkProtocolVersion": "wd-chunk/1"
+    }
+  },
+  "canonicalJson": "{\"sessionId\":\"sess-7f3a\",\"files\":{\"file-1\":\"tok-aaa\",\"file-2\":\"tok-bbb\"},\"acceptedPlan\":{\"mode\":\"parallel-chunked\",\"chunkSize\":4194304,\"parallelism\":6,\"chunkProtocolVersion\":\"wd-chunk/1\"}}"
+}

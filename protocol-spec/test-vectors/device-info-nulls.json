@@ -1,0 +1,15 @@
+{
+  "type": "DeviceInfo",
+  "description": "Optional fields explicitly null must round-trip.",
+  "message": {
+    "alias": "Headless Server",
+    "version": "2.1",
+    "deviceModel": null,
+    "deviceType": null,
+    "fingerprint": "aabbccddeeff",
+    "port": 53317,
+    "protocol": "https",
+    "download": true
+  },
+  "canonicalJson": "{\"alias\":\"Headless Server\",\"version\":\"2.1\",\"deviceModel\":null,\"deviceType\":null,\"fingerprint\":\"aabbccddeeff\",\"port\":53317,\"protocol\":\"https\",\"download\":true}"
+}

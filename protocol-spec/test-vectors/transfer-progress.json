@@ -1,0 +1,15 @@
+{
+  "type": "TransferProgress",
+  "description": "A mid-transfer progress snapshot.",
+  "message": {
+    "sessionId": "sess-7f3a",
+    "fileId": "file-1",
+    "bytesTransferred": 6291456,
+    "totalBytes": 10485760,
+    "chunksCompleted": 3,
+    "totalChunks": 5,
+    "bytesPerSecond": 1258291,
+    "state": "transferring"
+  },
+  "canonicalJson": "{\"sessionId\":\"sess-7f3a\",\"fileId\":\"file-1\",\"bytesTransferred\":6291456,\"totalBytes\":10485760,\"chunksCompleted\":3,\"totalChunks\":5,\"bytesPerSecond\":1258291,\"state\":\"transferring\"}"
+}

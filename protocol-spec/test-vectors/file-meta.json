@@ -1,0 +1,13 @@
+{
+  "type": "FileMeta",
+  "description": "File metadata with a whole-file hash.",
+  "message": {
+    "id": "file-1",
+    "fileName": "holiday.png",
+    "size": 10485760,
+    "fileType": "image/png",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "preview": null
+  },
+  "canonicalJson": "{\"id\":\"file-1\",\"fileName\":\"holiday.png\",\"size\":10485760,\"fileType\":\"image/png\",\"sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"preview\":null}"
+}

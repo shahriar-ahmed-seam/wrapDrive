@@ -1,0 +1,51 @@
+{
+  "type": "PrepareUploadRequest",
+  "description": "A prepare-upload request with two files and a PIN.",
+  "message": {
+    "info": {
+      "alias": "Nice Orange",
+      "version": "2.1",
+      "deviceModel": "Pixel 8",
+      "deviceType": "mobile",
+      "fingerprint": "f1a2b3c4d5e6",
+      "port": 53317,
+      "protocol": "http",
+      "download": false
+    },
+    "capabilities": {
+      "appProtocol": "wrapdrive/1",
+      "parallelChunkedSend": true,
+      "parallelChunkedReceive": true,
+      "maxParallelConnections": 8,
+      "minChunkSize": 1024,
+      "maxChunkSize": 8388608,
+      "chunkProtocolVersions": ["wd-chunk/1"]
+    },
+    "files": {
+      "file-2": {
+        "id": "file-2",
+        "fileName": "notes.txt",
+        "size": 2048,
+        "fileType": "text/plain",
+        "sha256": null,
+        "preview": null
+      },
+      "file-1": {
+        "id": "file-1",
+        "fileName": "holiday.png",
+        "size": 10485760,
+        "fileType": "image/png",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "preview": null
+      }
+    },
+    "proposedPlan": {
+      "mode": "parallel-chunked",
+      "chunkSize": 4194304,
+      "parallelism": 6,
+      "chunkProtocolVersion": "wd-chunk/1"
+    },
+    "pin": "482913"
+  },
+  "canonicalJson": "{\"info\":{\"alias\":\"Nice Orange\",\"version\":\"2.1\",\"deviceModel\":\"Pixel 8\",\"deviceType\":\"mobile\",\"fingerprint\":\"f1a2b3c4d5e6\",\"port\":53317,\"protocol\":\"http\",\"download\":false},\"capabilities\":{\"appProtocol\":\"wrapdrive/1\",\"parallelChunkedSend\":true,\"parallelChunkedReceive\":true,\"maxParallelConnections\":8,\"minChunkSize\":1024,\"maxChunkSize\":8388608,\"chunkProtocolVersions\":[\"wd-chunk/1\"]},\"files\":{\"file-1\":{\"id\":\"file-1\",\"fileName\":\"holiday.png\",\"size\":10485760,\"fileType\":\"image/png\",\"sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"preview\":null},\"file-2\":{\"id\":\"file-2\",\"fileName\":\"notes.txt\",\"size\":2048,\"fileType\":\"text/plain\",\"sha256\":null,\"preview\":null}},\"proposedPlan\":{\"mode\":\"parallel-chunked\",\"chunkSize\":4194304,\"parallelism\":6,\"chunkProtocolVersion\":\"wd-chunk/1\"},\"pin\":\"482913\"}"
+}

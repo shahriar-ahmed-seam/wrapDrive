@@ -1,0 +1,14 @@
+{
+  "type": "Capabilities",
+  "description": "A fully chunk-capable peer.",
+  "message": {
+    "appProtocol": "wrapdrive/1",
+    "parallelChunkedSend": true,
+    "parallelChunkedReceive": true,
+    "maxParallelConnections": 8,
+    "minChunkSize": 1024,
+    "maxChunkSize": 8388608,
+    "chunkProtocolVersions": ["wd-chunk/1"]
+  },
+  "canonicalJson": "{\"appProtocol\":\"wrapdrive/1\",\"parallelChunkedSend\":true,\"parallelChunkedReceive\":true,\"maxParallelConnections\":8,\"minChunkSize\":1024,\"maxChunkSize\":8388608,\"chunkProtocolVersions\":[\"wd-chunk/1\"]}"
+}

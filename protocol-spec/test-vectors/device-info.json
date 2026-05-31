@@ -1,0 +1,15 @@
+{
+  "type": "DeviceInfo",
+  "description": "A typical mobile peer over HTTP.",
+  "message": {
+    "alias": "Nice Orange",
+    "version": "2.1",
+    "deviceModel": "Pixel 8",
+    "deviceType": "mobile",
+    "fingerprint": "f1a2b3c4d5e6",
+    "port": 53317,
+    "protocol": "http",
+    "download": false
+  },
+  "canonicalJson": "{\"alias\":\"Nice Orange\",\"version\":\"2.1\",\"deviceModel\":\"Pixel 8\",\"deviceType\":\"mobile\",\"fingerprint\":\"f1a2b3c4d5e6\",\"port\":53317,\"protocol\":\"http\",\"download\":false}"
+}

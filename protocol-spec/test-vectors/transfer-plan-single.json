@@ -1,0 +1,11 @@
+{
+  "type": "TransferPlan",
+  "description": "A single-stream fallback plan.",
+  "message": {
+    "mode": "single-stream",
+    "chunkSize": 1048576,
+    "parallelism": 1,
+    "chunkProtocolVersion": null
+  },
+  "canonicalJson": "{\"mode\":\"single-stream\",\"chunkSize\":1048576,\"parallelism\":1,\"chunkProtocolVersion\":null}"
+}

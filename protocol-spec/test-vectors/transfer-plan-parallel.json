@@ -1,0 +1,11 @@
+{
+  "type": "TransferPlan",
+  "description": "A negotiated parallel-chunked plan.",
+  "message": {
+    "mode": "parallel-chunked",
+    "chunkSize": 4194304,
+    "parallelism": 6,
+    "chunkProtocolVersion": "wd-chunk/1"
+  },
+  "canonicalJson": "{\"mode\":\"parallel-chunked\",\"chunkSize\":4194304,\"parallelism\":6,\"chunkProtocolVersion\":\"wd-chunk/1\"}"
+}
